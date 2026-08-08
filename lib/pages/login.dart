@@ -1,9 +1,17 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:barberapp/admin/admin_home.dart';
 import 'package:barberapp/pages/bottomdev.dart';
 import 'package:barberapp/pages/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-//import 'package:loginui/signup.dart';
+
+// IMPORTANT:
+// When you send me your admin panel file, I will add its import here.
+// For example:
+// import 'package:barberapp/pages/admin_page.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -13,55 +21,235 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  String email = "", password = "";
-  //TextEditingController namecontroller = new TextEditingController();
-  TextEditingController passwordcontroller = TextEditingController();
-  TextEditingController mailcontroller = TextEditingController();
+  final TextEditingController passwordcontroller = TextEditingController();
 
-  userLogin() async {
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+  final TextEditingController mailcontroller = TextEditingController();
+
+  bool isLoading = false;
+
+  // ============================================================
+  // LOGIN
+  // ============================================================
+
+  Future<void> userLogin() async {
+    final email = mailcontroller.text.trim();
+    final password = passwordcontroller.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            "Please enter your email and password",
+            style: TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
       );
+      return;
+    }
 
-      Navigator.push(
-        // ignore: use_build_context_synchronously
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // ----------------------------------------------------------
+      // 1. Login using Firebase Authentication
+      // ----------------------------------------------------------
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      final User? user = userCredential.user;
+
+      if (user == null) {
+        throw Exception("Could not get logged-in user.");
+      }
+
+      // ----------------------------------------------------------
+      // 2. Get the user's Firebase UID
+      // ----------------------------------------------------------
+
+      final String uid = user.uid;
+
+      // ----------------------------------------------------------
+      // 3. Look for this user in Firestore
+      // ----------------------------------------------------------
+
+      final DocumentSnapshot<Map<String, dynamic>> userDocument =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      // ----------------------------------------------------------
+      // 4. Check the role
+      // ----------------------------------------------------------
+
+      final Map<String, dynamic>? userData = userDocument.data();
+
+      final String role = (userData?['role'] ?? 'customer')
+          .toString()
+          .toLowerCase();
+
+      if (!mounted) return;
+
+      // ----------------------------------------------------------
+      // 5. ADMIN
+      // ----------------------------------------------------------
+
+      if (role == 'admin') {
+        /*
+          IMPORTANT:
+
+          Replace the code below with your actual Admin Panel page.
+
+          For example, if your admin page is:
+
+          lib/pages/admin_page.dart
+
+          and contains:
+
+          class AdminPage extends StatelessWidget
+
+          then add:
+
+          import 'package:barberapp/pages/admin_page.dart';
+
+          at the top and use:
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminPage(),
+            ),
+          );
+        */
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.green,
+            content: Text(
+              "Admin login successful",
+              style: TextStyle(fontSize: 18, color: Colors.white),
+            ),
+          ),
+        );
+
+        // TEMPORARY:
+        // We will replace this with your real Admin Panel
+        // after you send me its code/file.
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminHome()),
+        );
+
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // 6. CUSTOMER
+      // ----------------------------------------------------------
+
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => Bottomdev()),
+        MaterialPageRoute(builder: (_) => const Bottomdev()),
       );
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red,
-            content: Text(
-              "No user found for that Email",
-              style: TextStyle(fontSize: 18.0, color: Colors.white),
-            ),
+      if (!mounted) return;
+
+      String message;
+
+      switch (e.code) {
+        case 'user-not-found':
+          message = "No account found with this email.";
+          break;
+
+        case 'wrong-password':
+          message = "Incorrect password.";
+          break;
+
+        case 'invalid-credential':
+          message = "Incorrect email or password.";
+          break;
+
+        case 'invalid-email':
+          message = "Please enter a valid email address.";
+          break;
+
+        case 'user-disabled':
+          message = "This account has been disabled.";
+          break;
+
+        case 'too-many-requests':
+          message = "Too many attempts. Please try again later.";
+          break;
+
+        default:
+          message = e.message ?? "Login failed. Please try again.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            message,
+            style: const TextStyle(fontSize: 18, color: Colors.white),
           ),
-        );
-      } else if (e.code == 'wrong-password') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red,
-            content: Text(
-              "Wrong Password Provided by User",
-              style: TextStyle(fontSize: 18.0, color: Colors.white),
-            ),
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            "Could not check account: ${e.message ?? e.code}",
+            style: const TextStyle(fontSize: 18, color: Colors.white),
           ),
-        );
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            "Something went wrong: $e",
+            style: const TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
       }
     }
   }
 
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
+  @override
+  void dispose() {
+    passwordcontroller.dispose();
+    mailcontroller.dispose();
+    super.dispose();
+  }
+
+  // ============================================================
+  // UI
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xff172ca2),
+      backgroundColor: const Color(0xff172ca2),
+      // ignore: avoid_unnecessary_containers
       body: Container(
         child: Stack(
-          //crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Positioned.fill(
               child: Image.asset("images/bg.png", fit: BoxFit.cover),
@@ -72,20 +260,28 @@ class _LoginState extends State<Login> {
                 padding: EdgeInsets.only(
                   top: MediaQuery.of(context).size.height / 2.75,
                   left: 20,
+                  right: 20,
                 ),
-
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ------------------------------------------------
+                    // WELCOME
+                    // ------------------------------------------------
                     Text(
-                      "Welcome \n Back",
+                      "Welcome \nBack",
                       style: GoogleFonts.pacifico(
                         color: Colors.white,
                         fontSize: 40.0,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 10),
+
+                    const SizedBox(height: 10),
+
+                    // ------------------------------------------------
+                    // EMAIL
+                    // ------------------------------------------------
                     Container(
                       height: 55,
                       decoration: BoxDecoration(
@@ -95,27 +291,24 @@ class _LoginState extends State<Login> {
                       child: Center(
                         child: TextField(
                           controller: mailcontroller,
-                          style: const TextStyle(
-                            color: Colors.white,
-                          ), // ✅ text color white
-                          decoration: InputDecoration(
+                          keyboardType: TextInputType.emailAddress,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
                             border: InputBorder.none,
-                            prefixIcon: const Icon(
-                              Icons.email,
-                              color: Colors.white,
-                            ), // ✅ white icon
+                            prefixIcon: Icon(Icons.email, color: Colors.white),
                             hintText: "Email",
-                            hintStyle: const TextStyle(
-                              color: Colors.white70,
-                            ), // ✅ white hint
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 11,
-                            ), // ✅ centered text vertically
+                            hintStyle: TextStyle(color: Colors.white70),
+                            contentPadding: EdgeInsets.symmetric(vertical: 11),
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(height: 30),
+
+                    const SizedBox(height: 30),
+
+                    // ------------------------------------------------
+                    // PASSWORD
+                    // ------------------------------------------------
                     Container(
                       height: 55,
                       decoration: BoxDecoration(
@@ -124,78 +317,127 @@ class _LoginState extends State<Login> {
                       ),
                       child: TextField(
                         controller: passwordcontroller,
-                        obscureText: true, // ✅ hides password
+                        obscureText: true,
                         style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           border: InputBorder.none,
-                          prefixIcon: const Icon(
-                            Icons.lock,
-                            color: Colors.white,
-                          ),
+                          prefixIcon: Icon(Icons.lock, color: Colors.white),
                           hintText: "Password",
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 11,
-                          ),
+                          hintStyle: TextStyle(color: Colors.white70),
+                          contentPadding: EdgeInsets.symmetric(vertical: 11),
                         ),
                       ),
                     ),
+
+                    // ------------------------------------------------
+                    // FORGOT PASSWORD
+                    // ------------------------------------------------
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.end, // ✅ aligns to right
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: () {
-                            // TODO: add forgot password action here
+                          onPressed: () async {
+                            final email = mailcontroller.text.trim();
+
+                            if (email.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  backgroundColor: Colors.red,
+                                  content: Text(
+                                    "Enter your email first",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
+                            try {
+                              await FirebaseAuth.instance
+                                  .sendPasswordResetEmail(email: email);
+
+                              if (!mounted) return;
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  backgroundColor: Colors.green,
+                                  content: Text(
+                                    "Password reset email sent",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            } on FirebaseAuthException catch (e) {
+                              if (!mounted) return;
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red,
+                                  content: Text(
+                                    e.message ?? "Could not send reset email",
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            }
                           },
                           child: const Text(
                             "Forgot Password ?",
-                            style: TextStyle(
-                              color: Colors.white, // ✅ white text
-                              fontSize: 16,
-                            ),
+                            style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 50),
+
+                    const SizedBox(height: 50),
+
+                    // ------------------------------------------------
+                    // LOGIN BUTTON
+                    // ------------------------------------------------
                     GestureDetector(
-                      onTap: () async {
-                        if (mailcontroller.text != "" &&
-                            passwordcontroller.text != "") {
-                          setState(() {
-                            email = mailcontroller.text;
-                            password = passwordcontroller.text;
-                          });
-                          userLogin();
-                        }
-                      },
+                      onTap: isLoading ? null : userLogin,
                       child: Center(
                         child: Container(
                           height: 60,
+                          width: 150,
                           decoration: BoxDecoration(
-                            color: Color(0xfff85f3c),
+                            color: isLoading
+                                ? Colors.grey
+                                : const Color(0xfff85f3c),
                             borderRadius: BorderRadius.circular(60),
                           ),
-                          width: 150,
                           child: Center(
-                            child: Text(
-                              "Login",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 24.0,
-                              ),
-                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    height: 26,
+                                    width: 26,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 3,
+                                    ),
+                                  )
+                                : const Text(
+                                    "Login",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 24.0,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(height: 50),
+
+                    const SizedBox(height: 50),
+
+                    // ------------------------------------------------
+                    // SIGNUP
+                    // ------------------------------------------------
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           "New User ?",
                           style: TextStyle(
                             color: Colors.white,
@@ -208,10 +450,12 @@ class _LoginState extends State<Login> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => Signup()),
+                              MaterialPageRoute(
+                                builder: (context) => const Signup(),
+                              ),
                             );
                           },
-                          child: Text(
+                          child: const Text(
                             " Signup ",
                             style: TextStyle(
                               color: Color(0xfff85f3c),
@@ -222,6 +466,8 @@ class _LoginState extends State<Login> {
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
@@ -232,3 +478,12 @@ class _LoginState extends State<Login> {
     );
   }
 }
+
+// ================================================================
+// TEMPORARY ADMIN PAGE
+// ================================================================
+//
+// This is only here so login.dart compiles right now.
+// Once you send me your actual admin panel code, I will replace
+// this with your real Admin Panel.
+// ================================================================

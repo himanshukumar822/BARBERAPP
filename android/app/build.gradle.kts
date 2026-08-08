@@ -36,6 +36,11 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+                    // Disable R8 shrinking for now.
+        // This avoids the Stripe push-provisioning missing-class
+        // error during the release build.
+        isMinifyEnabled = false
+        isShrinkResources = false
         }
     }
 }

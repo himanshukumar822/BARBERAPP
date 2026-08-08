@@ -1,10 +1,10 @@
-import 'package:barberapp/models/booking_model.dart';
-import 'package:barberapp/pages/booking_page.dart';
+//import 'package:barberapp/models/booking_model.dart';
+//import 'package:barberapp/pages/booking_page.dart';
 import 'package:barberapp/pages/details_page.dart';
 import 'package:barberapp/services/widget_suppart.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:barberapp/pages/bottomdev.dart';
+//import 'package:barberapp/pages/bottomdev.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -110,20 +110,13 @@ class _HomeState extends State<Home> {
                     Padding(
                       padding: const EdgeInsets.only(left: 20.0),
                       child: GestureDetector(
-                        onTap: () async {
-                          final booking = await Navigator.of(context)
-                              .push<BookingModel>(
-                                MaterialPageRoute(
-                                  builder: (_) => const BookingPage(
-                                    serviceName: "Hair Cut",
-                                  ),
-                                ),
-                              );
-                          if (booking != null) {
-                            Bottomdev.of(
-                              context,
-                            )?.setBookingAndOpenTab(booking);
-                          }
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const BookingPage(serviceName: "Hair Cut"),
+                            ),
+                          );
                         },
                         child: Row(
                           children: [
@@ -185,19 +178,13 @@ class _HomeState extends State<Home> {
                     Padding(
                       padding: const EdgeInsets.only(left: 20.0),
                       child: GestureDetector(
-                        onTap: () async {
-                          final booking = await Navigator.of(context)
-                              .push<BookingModel>(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const BookingPage(serviceName: "SHAIVNG"),
-                                ),
-                              );
-                          if (booking != null) {
-                            Bottomdev.of(
-                              context,
-                            )?.setBookingAndOpenTab(booking);
-                          }
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const BookingPage(serviceName: "SHAVING"),
+                            ),
+                          );
                         },
                         child: Row(
                           children: [
@@ -259,20 +246,13 @@ class _HomeState extends State<Home> {
                     Padding(
                       padding: const EdgeInsets.only(left: 20.0),
                       child: GestureDetector(
-                        onTap: () async {
-                          final booking = await Navigator.of(context)
-                              .push<BookingModel>(
-                                MaterialPageRoute(
-                                  builder: (_) => const BookingPage(
-                                    serviceName: "CREAMBATH",
-                                  ),
-                                ),
-                              );
-                          if (booking != null) {
-                            Bottomdev.of(
-                              context,
-                            )?.setBookingAndOpenTab(booking);
-                          }
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const BookingPage(serviceName: "CREAMBATH"),
+                            ),
+                          );
                         },
                         child: Row(
                           children: [
@@ -334,20 +314,14 @@ class _HomeState extends State<Home> {
                     Padding(
                       padding: const EdgeInsets.only(left: 20.0),
                       child: GestureDetector(
-                        onTap: () async {
-                          final booking = await Navigator.of(context)
-                              .push<BookingModel>(
-                                MaterialPageRoute(
-                                  builder: (_) => const BookingPage(
-                                    serviceName: "HAIR COLORING",
-                                  ),
-                                ),
-                              );
-                          if (booking != null) {
-                            Bottomdev.of(
-                              context,
-                            )?.setBookingAndOpenTab(booking);
-                          }
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const BookingPage(
+                                serviceName: "HAIR COLORING",
+                              ),
+                            ),
+                          );
                         },
                         child: Row(
                           children: [
@@ -409,20 +383,14 @@ class _HomeState extends State<Home> {
                     Padding(
                       padding: const EdgeInsets.only(left: 20.0),
                       child: GestureDetector(
-                        onTap: () async {
-                          final booking = await Navigator.of(context)
-                              .push<BookingModel>(
-                                MaterialPageRoute(
-                                  builder: (_) => const BookingPage(
-                                    serviceName: "HAIR COLORING",
-                                  ),
-                                ),
-                              );
-                          if (booking != null) {
-                            Bottomdev.of(
-                              context,
-                            )?.setBookingAndOpenTab(booking);
-                          }
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const BookingPage(
+                                serviceName: "HAIR COLORING",
+                              ),
+                            ),
+                          );
                         },
                         child: Row(
                           children: [

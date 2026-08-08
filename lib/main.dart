@@ -1,12 +1,13 @@
-import 'package:barberapp/pages/booking_page.dart';
-import 'package:barberapp/pages/bottomdev.dart';
-import 'package:barberapp/pages/details_page.dart';
-import 'package:barberapp/pages/home.dart';
-import 'package:barberapp/pages/login.dart';
-import 'package:barberapp/pages/onboarding.dart';
-import 'package:barberapp/pages/profile.dart';
+//import 'package:barberapp/pages/booking_page.dart';
+//import 'package:barberapp/pages/bottomdev.dart';
+//import 'package:barberapp/pages/details_page.dart';
+//import 'package:barberapp/pages/home.dart';
+//import 'package:barberapp/pages/login.dart';
+//import 'package:barberapp/pages/onboarding.dart';
+//import 'package:barberapp/pages/profile.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:barberapp/pages/auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +42,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: Onboarding(),
+      home: const AuthGate(),
     );
   }
 }

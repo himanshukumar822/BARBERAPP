@@ -1,14 +1,12 @@
 import 'package:barberapp/pages/login.dart';
 import 'package:barberapp/services/widget_suppart.dart';
 import 'package:flutter/material.dart';
-import 'package:barberapp/admin/adminlogin.dart';
 
 class Onboarding extends StatefulWidget {
   const Onboarding({super.key});
+
   @override
-  State<Onboarding> createState() {
-    return _OnboardingState();
-  }
+  State<Onboarding> createState() => _OnboardingState();
 }
 
 class _OnboardingState extends State<Onboarding> {
@@ -16,45 +14,63 @@ class _OnboardingState extends State<Onboarding> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         child: Column(
           children: [
-            Image.asset("images/barber.png"),
+            // -------------------------------------------------------
+            // TOP IMAGE
+            // -------------------------------------------------------
+            Image.asset(
+              "images/barber.png",
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+
+            // -------------------------------------------------------
+            // BOTTOM SECTION
+            // -------------------------------------------------------
             Expanded(
               child: Container(
-                padding: EdgeInsets.only(left: 20.0, right: 20.0),
                 width: MediaQuery.of(context).size.width,
-                decoration: BoxDecoration(color: Color(0xff2c3925)),
+                padding: const EdgeInsets.only(left: 20.0, right: 20.0),
+                decoration: const BoxDecoration(color: Color(0xff2c3925)),
                 child: Column(
-                  //mainAxisAlignment: MainAxisAlignment.center,
-                  // crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SizedBox(height: 30.0),
-                    Text(
-                      "Welcome To My App lorem iposm is a dummy text of the printing and tyo setting industry",
+                    const SizedBox(height: 30.0),
+
+                    // -------------------------------------------------
+                    // WELCOME TEXT
+                    // -------------------------------------------------
+                    const Text(
+                      "Welcome To My App\n"
+                      "Book your barber appointment easily.",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: const Color.fromARGB(180, 255, 255, 255),
-
+                        color: Color.fromARGB(180, 255, 255, 255),
                         fontWeight: FontWeight.w500,
                         fontSize: 18,
                       ),
                     ),
-                    SizedBox(height: 30.0),
+
+                    const SizedBox(height: 30.0),
+
+                    // -------------------------------------------------
+                    // BOOK NOW BUTTON
+                    // -------------------------------------------------
                     Material(
                       elevation: 5.0,
                       borderRadius: BorderRadius.circular(10),
-
                       child: Container(
                         height: 60,
                         width: 250,
-                        padding: EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Color(0xfffdece7),
+                          color: const Color(0xfffdece7),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: GestureDetector(
                           onTap: () {
-                            // 👇 Navigate to the Booking Page
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -71,39 +87,16 @@ class _OnboardingState extends State<Onboarding> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
 
-                    Material(
-                      elevation: 5.0,
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        height: 60,
-                        width: 250,
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AdminLogin(),
-                              ),
-                            );
-                          },
-                          child: Center(
-                            child: Text(
-                              "ADMIN PANEL",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                    const SizedBox(height: 30.0),
+
+                    // -------------------------------------------------
+                    // INFORMATION
+                    // -------------------------------------------------
+                    const Text(
+                      "Already have an account? Login to continue.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                   ],
                 ),

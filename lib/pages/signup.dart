@@ -3,6 +3,7 @@ import 'package:barberapp/pages/login.dart';
 import 'package:barberapp/services/database.dart';
 import 'package:barberapp/services/sharedprefernce.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:random_string/random_string.dart';
@@ -21,65 +22,147 @@ class _SignupState extends State<Signup> {
   TextEditingController passwordcontroller = TextEditingController();
   TextEditingController mailcontroller = TextEditingController();
 
-  registration() async {
-    if (passwordcontroller.text != "" &&
-        namecontroller.text != "" &&
-        mailcontroller.text != "") {
-      try {
-        UserCredential userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-        String Id = randomAlphaNumeric(10);
-        Map<String, dynamic> userInfoMap = {
-          "Name": namecontroller.text,
-          "Email": mailcontroller.text,
-          "Id": Id,
-        };
+  Future<void> registration() async {
+    final nameText = namecontroller.text.trim();
+    final emailText = mailcontroller.text.trim();
+    final passwordText = passwordcontroller.text;
 
-        await userCredential.user!.updateDisplayName(name);
-        await userCredential.user!.reload();
-        await DatabaseMethods().addUserInfo(userInfoMap, Id);
-        await SharedprefernceHelper().saveUserId(Id);
-        await SharedprefernceHelper().saveUserName(namecontroller.text);
-        await SharedprefernceHelper().saveUserId(mailcontroller.text);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.green,
-            content: Text(
-              "Regisered Successfully",
-              style: TextStyle(fontSize: 20),
-            ),
+    if (nameText.isEmpty || emailText.isEmpty || passwordText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            "Please fill all fields",
+            style: TextStyle(fontSize: 18, color: Colors.white),
           ),
-        );
-        Navigator.push(
-          // ignore: use_build_context_synchronously
-          context,
-          MaterialPageRoute(builder: (context) => Bottomdev()),
-        );
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.red,
-              content: Text(
-                "No user found for that Email",
-                style: TextStyle(fontSize: 18.0, color: Colors.white),
-              ),
-            ),
-          );
-        } else if (e.code == 'wrong-password') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.red,
-              content: Text(
-                "Wrong Password Provided by User",
-                style: TextStyle(fontSize: 18.0, color: Colors.white),
-              ),
-            ),
-          );
-        }
-      }
+        ),
+      );
+      return;
     }
+
+    try {
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailText,
+            password: passwordText,
+          );
+
+      final User? user = userCredential.user;
+
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'user-creation-failed',
+          message: 'Could not create the user account.',
+        );
+      }
+
+      await user.updateDisplayName(nameText);
+      await user.reload();
+
+      // Every account created from this page is a CUSTOMER.
+      // The document ID is the Firebase Authentication UID.
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'role': 'customer',
+        'name': nameText,
+        'email': emailText,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Keep your existing database/shared-preference system.
+      final String id = randomAlphaNumeric(10);
+
+      final Map<String, dynamic> userInfoMap = {
+        "Name": nameText,
+        "Email": emailText,
+        "Id": id,
+      };
+
+      await DatabaseMethods().addUserInfo(userInfoMap, id);
+
+      await SharedprefernceHelper().saveUserId(id);
+      await SharedprefernceHelper().saveUserName(nameText);
+      await SharedprefernceHelper().saveUserEmail(emailText);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.green,
+          content: Text(
+            "Registered Successfully",
+            style: TextStyle(fontSize: 20),
+          ),
+        ),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const Bottomdev()),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      String message;
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = "An account already exists with this email.";
+          break;
+        case 'invalid-email':
+          message = "Please enter a valid email address.";
+          break;
+        case 'weak-password':
+          message = "Password is too weak. Use at least 6 characters.";
+          break;
+        case 'user-disabled':
+          message = "This account has been disabled.";
+          break;
+        default:
+          message = e.message ?? "Registration failed. Please try again.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            message,
+            style: const TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            "Could not save user information: ${e.message ?? e.code}",
+            style: const TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(
+            "Something went wrong: $e",
+            style: const TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    namecontroller.dispose();
+    passwordcontroller.dispose();
+    mailcontroller.dispose();
+    super.dispose();
   }
 
   @override

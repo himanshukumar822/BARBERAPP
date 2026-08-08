@@ -1,8 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:barberapp/pages/booking_page.dart';
-import 'package:barberapp/pages/bottomdev.dart';
+
 import 'package:barberapp/models/booking_model.dart';
 
 class BookingPage extends StatefulWidget {
@@ -18,6 +19,8 @@ class _BookingPageState extends State<BookingPage> {
   int selectedIndex = 0;
   late List<DateTime> next7Days;
   String? selectedTime;
+  bool isBooking = false;
+
   @override
   void initState() {
     super.initState();
@@ -25,6 +28,80 @@ class _BookingPageState extends State<BookingPage> {
       7,
       (index) => DateTime.now().add(Duration(days: index)),
     );
+  }
+
+  Future<void> _saveBooking() async {
+    if (selectedTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a time")),
+      );
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please login before booking")),
+      );
+      return;
+    }
+
+    setState(() {
+      isBooking = true;
+    });
+
+    try {
+      final selectedDate = next7Days[selectedIndex];
+
+      // IMPORTANT:
+      // .add() creates a NEW Firestore document for every booking.
+      // Do not use .doc(some-fixed-id).set() here, otherwise
+      // the next booking would overwrite the previous one.
+      await FirebaseFirestore.instance.collection("bookings").add({
+        "userId": user.uid,
+        "customerName": user.displayName ??
+            (user.email?.split('@').first ?? "Customer"),
+        "customerEmail": user.email ?? "",
+        "service": widget.serviceName,
+        "date": Timestamp.fromDate(selectedDate),
+        "time": selectedTime!,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Booking saved successfully"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(
+        context,
+        BookingModel(
+          serviceName: widget.serviceName,
+          date: selectedDate,
+          time: selectedTime!,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Could not save booking: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isBooking = false;
+        });
+      }
+    }
   }
 
   @override
@@ -46,7 +123,6 @@ class _BookingPageState extends State<BookingPage> {
       backgroundColor: lightBg,
       body: Stack(
         children: [
-          // ===== HEADER BACKGROUND =====
           Container(
             height: 320,
             width: double.infinity,
@@ -58,8 +134,6 @@ class _BookingPageState extends State<BookingPage> {
               ),
             ),
           ),
-
-          // ===== CONTENT =====
           SafeArea(
             bottom: false,
             child: Column(
@@ -69,29 +143,26 @@ class _BookingPageState extends State<BookingPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.arrow_back, color: Colors.white),
-                      //                    leading: IconButton(
-                      //   icon: const Icon(Icons.arrow_back),
-                      //   onPressed: () {
-                      //     Navigator.pop(context); // 👈 goes back to Home
-                      //   },
-                      // ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                        ),
+                      ),
                       const SizedBox(height: 16),
-
                       Row(
                         children: [
-                          CircleAvatar(
+                          const CircleAvatar(
                             radius: 32,
-                            backgroundImage: const AssetImage(
-                              "images/barber1.png",
-                            ),
+                            backgroundImage: AssetImage("images/barber1.png"),
                             backgroundColor: accent,
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 "JOHN DOE",
                                 style: TextStyle(
                                   color: Colors.white,
@@ -100,10 +171,10 @@ class _BookingPageState extends State<BookingPage> {
                                   letterSpacing: 1,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 widget.serviceName,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -113,7 +184,6 @@ class _BookingPageState extends State<BookingPage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 24),
                       const Text(
                         "CHOOSE YOUR SLOT",
@@ -123,17 +193,14 @@ class _BookingPageState extends State<BookingPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       const SizedBox(height: 12),
-
-                      // ===== DATE SELECTOR (REAL DATES) =====
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: List.generate(next7Days.length, (index) {
                             final date = next7Days[index];
-                            final day = DateFormat('EEE').format(date); // Mon
-                            final number = DateFormat('d').format(date); // 25
+                            final day = DateFormat('EEE').format(date);
+                            final number = DateFormat('d').format(date);
                             final isSelected = selectedIndex == index;
 
                             return GestureDetector(
@@ -150,8 +217,6 @@ class _BookingPageState extends State<BookingPage> {
                     ],
                   ),
                 ),
-
-                // ===== TIME SECTION =====
                 Expanded(
                   child: Container(
                     color: lightBg,
@@ -168,48 +233,44 @@ class _BookingPageState extends State<BookingPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 16),
-
                         Expanded(
                           child: GridView.count(
                             crossAxisCount: 3,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                             childAspectRatio: 2.3,
-                            children:
-                                [
-                                  "09:00 AM",
-                                  "10:00 AM",
-                                  "11:00 AM",
-                                  "12:00 PM",
-                                  "01:00 PM",
-                                  "02:00 PM",
-                                  "03:00 PM",
-                                  "04:00 PM",
-                                  "05:00 PM",
-                                  "06:00 PM",
-                                  "07:00 PM",
-                                  "08:00 PM",
-                                  "09:00 PM",
-                                ].map((time) {
-                                  final isSelected = selectedTime == time;
+                            children: [
+                              "09:00 AM",
+                              "10:00 AM",
+                              "11:00 AM",
+                              "12:00 PM",
+                              "01:00 PM",
+                              "02:00 PM",
+                              "03:00 PM",
+                              "04:00 PM",
+                              "05:00 PM",
+                              "06:00 PM",
+                              "07:00 PM",
+                              "08:00 PM",
+                              "09:00 PM",
+                            ].map((time) {
+                              final isSelected = selectedTime == time;
 
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        selectedTime = time;
-                                      });
-                                    },
-                                    child: _TimeChip(
-                                      time,
-                                      isSelected: isSelected,
-                                    ),
-                                  );
-                                }).toList(),
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedTime = time;
+                                  });
+                                },
+                                child: _TimeChip(
+                                  time,
+                                  isSelected: isSelected,
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
-
                         Center(
                           child: SizedBox(
                             width: 160,
@@ -221,37 +282,25 @@ class _BookingPageState extends State<BookingPage> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              onPressed: () {
-                                if (selectedTime == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Please select a time"),
+                              onPressed: isBooking ? null : _saveBooking,
+                              child: isBooking
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: lightBg,
+                                      ),
+                                    )
+                                  : const Text(
+                                      "BOOK NOW",
+                                      style: TextStyle(
+                                        color: lightBg,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1,
+                                      ),
                                     ),
-                                  );
-                                  return;
-                                }
-
-                                final selectedDate = next7Days[selectedIndex];
-                                // 👇 Switch to Booking tab
-                                // Bottomdev.of(context)?.setBookingAndOpenTab(
-                                final booking = BookingModel(
-                                  serviceName: widget.serviceName,
-                                  date: selectedDate,
-                                  time: selectedTime!,
-                                );
-
-                                // 👇 Close details page
-                                Navigator.pop(context, booking);
-                              },
-                              child: const Text(
-                                "BOOK NOW",
-                                style: TextStyle(
-                                  color: lightBg,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                ),
-                              ),
                             ),
                           ),
                         ),
@@ -267,7 +316,11 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
-  static Widget _dateItem(String day, String date, bool selected) {
+  static Widget _dateItem(
+    String day,
+    String date,
+    bool selected,
+  ) {
     return Container(
       margin: const EdgeInsets.only(right: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -280,7 +333,9 @@ class _BookingPageState extends State<BookingPage> {
         children: [
           Text(
             day,
-            style: TextStyle(color: selected ? Colors.black : Colors.white70),
+            style: TextStyle(
+              color: selected ? Colors.black : Colors.white70,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -300,16 +355,24 @@ class _BookingPageState extends State<BookingPage> {
 class _TimeChip extends StatelessWidget {
   final String time;
   final bool isSelected;
-  const _TimeChip(this.time, {required this.isSelected});
+
+  const _TimeChip(
+    this.time, {
+    required this.isSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF2E3D2F) : Colors.white,
+        color: isSelected
+            ? const Color(0xFF2E3D2F)
+            : Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isSelected ? Colors.black : Colors.black26),
+        border: Border.all(
+          color: isSelected ? Colors.black : Colors.black26,
+        ),
       ),
       child: Text(
         time,
